@@ -1,89 +1,369 @@
-![q-e-logo](logo.jpg)
+# Quantum ESPRESSO Build and Install Script
 
-This is the distribution of the Quantum ESPRESSO suite of codes (ESPRESSO:
-opEn-Source Package for Research in Electronic Structure, Simulation, and
-Optimization)
+This script configures, builds, and installs Quantum ESPRESSO using GCC and OpenMPI provided through the cluster module system.
 
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+It is designed to work regardless of the directory from which the script is executed.
 
-## USAGE
-Quick installation instructions for CPU-based machines. For GPU execution, see
-file [README_GPU.md](README_GPU.md). Go to the directory where this file is. 
+## Requirements
 
-Using "make"
-(`[]` means "optional"):
+The system must provide:
+
+* Bash
+* Environment Modules or Lmod
+* GCC module
+* OpenMPI module
+* `make`
+* `git`
+* `mpicc`
+* `mpifort`
+
+The default modules are:
+
+```text
+gcc/10.4.0
+openmpi/5.0.2
 ```
-./configure [options]
-make all
+
+The GCC module is loaded first because it may expose the corresponding OpenMPI module through `MODULEPATH`.
+
+## Directory Layout
+
+The script supports two common layouts.
+
+### Script inside the Quantum ESPRESSO source tree
+
+```text
+q-e/
+├── configure
+├── CMakeLists.txt
+├── install.sh
+├── PW/
+├── Modules/
+└── ...
 ```
-"make" alone prints a list of acceptable targets. Optionally,
-`make -jN` runs parallel compilation on `N` processors.
-Link to binaries are found in bin/.
 
-Using "CMake" (v.3.14 or later):
+Run:
 
+```bash
+./install.sh
 ```
-mkdir ./build
-cd ./build
-cmake -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc [-DCMAKE_INSTALL_PREFIX=/path/to/install] ..
-make [-jN]
-[make install]
+
+The default build and installation directories will be created beside the `q-e` source directory:
+
+```text
+project/
+├── q-e/
+├── build-make/
+└── install/
 ```
-Although CMake has the capability to guess compilers, it is strongly recommended to specify
-the intended compilers or MPI compiler wrappers as `CMAKE_Fortran_COMPILER` and `CMAKE_C_COMPILER`.
-"make" builds all targets. Link to binaries are found in build/bin.
-If `make install` is invoked, directory `CMAKE_INSTALL_PREFIX`
-is prepended onto all install directories.
 
-For more information, see the general documentation in directory Doc/, 
-package-specific documentation in \*/Doc/, and the web site 
-http://www.quantum-espresso.org/. Technical documentation for users and
-developers 
-can be found on [Wiki page on gitlab](https://gitlab.com/QEF/q-e/-/wikis/home).
+### Script beside the Quantum ESPRESSO source tree
 
-## PACKAGES
+```text
+project/
+├── install.sh
+└── q-e/
+    ├── configure
+    ├── CMakeLists.txt
+    └── ...
+```
 
-- PWscf: structural optimisation and molecular dynamics on the electronic ground state, with self-consistent solution of DFT equations;
-- CP: Car-Parrinello molecular dynamics;
-- PHonon: vibrational and dielectric properties from DFPT (Density-Functional Perturbation Theory);
-- TD-DFPT: spectra from Time-dependent DFPT;
-- HP: calculation of Hubbard parameters from DFPT;
-- EPW: calculation of electron-phonon coefficients, carrier transport, phonon-limited superconductivity and phonon-assisted optical processes;
-- PWCOND: ballistic transport;
-- XSpectra: calculation of X-ray absorption spectra;
-- PWneb: reaction pathways and transition states with the Nudged Elastic Band method;
-- GWL: many-body perturbation theory in the GW approach using ultra-localised Wannier functions and Lanczos chains;
-- QEHeat: energy current in insulators for thermal transport calculations in DFT.
-- KCW: Koopmans-compliant functionals in a Wannier representation
+Run:
 
-## Modular libraries
-The following libraries have been isolated and partially encapsulated in view of their release for usage in other codes as well:
+```bash
+./install.sh
+```
 
-- UtilXlib: performing basic MPI handling, error handling, timing handling.
-- FFTXlib: parallel (MPI and OpenMP) distributed three-dimensional FFTs, performing also load-balanced distribution of data (plane waves, G-vectors and real-space grids) across processors.
-- LAXlib: parallel distributed dense-matrix diagonalization, using ELPA, SCALapack, or a custom algorithm.
-- KS Solvers: parallel iterative diagonalization for the Kohn-Sham Hamiltonian (represented as an operator),using block Davidson and band-by-band or block Conjugate-Gradient algorithms.
-- LRlib: performs a variety of tasks connected with (time-dependent) DFPT, to be used also in connection with Many-Body Perturbation Theory.
-- upflib: pseudopotential-related code.
-- devXlib: low-level utilities for GPU execution
+The script automatically detects `q-e/` as the source directory.
 
-## Contributing
-Quantum ESPRESSO is an open project: contributions are welcome.
-Read the [Contribution Guidelines](CONTRIBUTING.md) to see how you
-can contribute.
+## Basic Usage
 
-## LICENSE
+Make the script executable:
 
-All the material included in this distribution is free software;
-you can redistribute it and/or modify it under the terms of the GNU
-General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
+```bash
+chmod +x install.sh
+```
 
-These programs are distributed in the hope that they will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-for more details.
+Then run:
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-675 Mass Ave, Cambridge, MA 02139, USA.
+```bash
+./install.sh
+```
+
+By default, the script will:
+
+1. Load `gcc/10.4.0`.
+2. Load `openmpi/5.0.2`.
+3. Initialize Git submodules if required.
+4. Configure Quantum ESPRESSO with MPI support.
+5. Enable OpenMP support.
+6. Disable ScaLAPACK.
+7. Build Quantum ESPRESSO.
+8. Install it into the `install/` directory.
+9. Verify that `bin/pw.x` was successfully installed.
+
+The effective configure options are approximately:
+
+```bash
+./configure \
+    --prefix=<install-directory> \
+    --enable-parallel \
+    --enable-openmp \
+    --with-scalapack=no
+```
+
+## Environment Variables
+
+The script can be customized using environment variables without modifying the script itself.
+
+### `QE_SOURCE_DIR`
+
+Explicitly specify the Quantum ESPRESSO source directory.
+
+```bash
+QE_SOURCE_DIR=/path/to/q-e ./install.sh
+```
+
+### `QE_BUILD_DIR`
+
+Specify a custom build directory.
+
+```bash
+QE_BUILD_DIR=/scratch/$USER/qe-build ./install.sh
+```
+
+Default:
+
+```text
+<work-root>/build-make
+```
+
+### `QE_INSTALL_PREFIX`
+
+Specify the installation directory.
+
+```bash
+QE_INSTALL_PREFIX=$HOME/software/qe ./install.sh
+```
+
+Default:
+
+```text
+<work-root>/install
+```
+
+After installation, executables will be located in:
+
+```text
+<QE_INSTALL_PREFIX>/bin
+```
+
+### `QE_GCC_MODULE`
+
+Override the GCC module.
+
+```bash
+QE_GCC_MODULE=gcc/12.2.0 ./install.sh
+```
+
+Default:
+
+```text
+gcc/10.4.0
+```
+
+### `QE_MPI_MODULE`
+
+Override the MPI module.
+
+```bash
+QE_MPI_MODULE=openmpi/5.0.5 ./install.sh
+```
+
+Default:
+
+```text
+openmpi/5.0.2
+```
+
+### `QE_JOBS`
+
+Control the number of parallel compilation jobs.
+
+```bash
+QE_JOBS=16 ./install.sh
+```
+
+This results in approximately:
+
+```bash
+make -j 16
+```
+
+If `QE_JOBS` is not specified, the script detects the available CPU count but limits the default to 8 jobs to avoid consuming an entire shared login node.
+
+On a dedicated compute node, a larger value can be specified explicitly.
+
+For example:
+
+```bash
+QE_JOBS=64 ./install.sh
+```
+
+### `QE_ENABLE_OPENMP`
+
+Control OpenMP support.
+
+OpenMP is enabled by default:
+
+```bash
+QE_ENABLE_OPENMP=1 ./install.sh
+```
+
+To disable it:
+
+```bash
+QE_ENABLE_OPENMP=0 ./install.sh
+```
+
+### `QE_CLEAN_BUILD`
+
+Remove the existing build directory before configuring.
+
+```bash
+QE_CLEAN_BUILD=1 ./install.sh
+```
+
+This is useful when changing compilers, MPI implementations, or major configure options.
+
+The script includes safety checks to prevent accidental removal of the source directory, script directory, or `/`.
+
+### `QE_MAKE_TARGETS`
+
+Override the default Make target.
+
+The default is:
+
+```text
+all
+```
+
+For example:
+
+```bash
+QE_MAKE_TARGETS=pw ./install.sh
+```
+
+The available targets depend on the Quantum ESPRESSO version and its Makefiles.
+
+## Example: Clean Build with 32 Compilation Jobs
+
+```bash
+QE_CLEAN_BUILD=1 \
+QE_JOBS=32 \
+./install.sh
+```
+
+## Example: Custom Build and Install Directories
+
+```bash
+QE_BUILD_DIR=/scratch/$USER/qe-build \
+QE_INSTALL_PREFIX=$HOME/software/qe \
+QE_JOBS=16 \
+./install.sh
+```
+
+## Example: Custom Toolchain
+
+```bash
+QE_GCC_MODULE=gcc/12.2.0 \
+QE_MPI_MODULE=openmpi/5.0.5 \
+QE_CLEAN_BUILD=1 \
+./install.sh
+```
+
+A clean build is recommended when changing the compiler or MPI implementation.
+
+## Using the Installed Quantum ESPRESSO
+
+After a successful installation, add the Quantum ESPRESSO executables to the current shell's `PATH`:
+
+```bash
+export PATH="/path/to/install/bin:$PATH"
+```
+
+For the default installation layout, this may be:
+
+```bash
+export PATH="$(pwd)/install/bin:$PATH"
+```
+
+Verify the installation:
+
+```bash
+which pw.x
+```
+
+or:
+
+```bash
+pw.x --help
+```
+
+A typical MPI execution is:
+
+```bash
+mpirun -np 8 pw.x -in input.in > output.out
+```
+
+The exact MPI launch command may depend on the cluster scheduler and MPI configuration.
+
+## Build Configuration
+
+The default build configuration is:
+
+```text
+Compiler:       GCC
+MPI:            OpenMPI
+MPI support:    Enabled
+OpenMP:         Enabled
+ScaLAPACK:      Disabled
+Build type:     Out-of-source
+```
+
+The source, build, and installation trees are kept separate:
+
+```text
+project/
+├── q-e/          # Quantum ESPRESSO source
+├── build-make/   # Generated files and compiled objects
+└── install/      # Installed executables
+    └── bin/
+        └── pw.x
+```
+
+## Error Handling
+
+The script uses strict Bash error handling.
+
+If a command fails, execution stops immediately and reports the approximate line at which the failure occurred:
+
+```text
+[qe-install] ERROR: command failed at line <line> (exit <status>)
+```
+
+The script also checks that:
+
+* the Quantum ESPRESSO source tree exists;
+* the working directory is writable;
+* the requested modules are available;
+* `make`, `git`, `mpicc`, and `mpifort` exist;
+* `pw.x` exists after installation.
+
+A successful installation ends with output similar to:
+
+```text
+[qe-install] installation completed successfully
+[qe-install] executables: /path/to/install/bin
+[qe-install] for this shell: export PATH="/path/to/install/bin:${PATH}"
+```
